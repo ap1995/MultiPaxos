@@ -29,6 +29,7 @@ class Tickets:
         self.acceptances = [[0 for x in range(w)] for y in range(h)]
         self.s = socket(AF_INET, SOCK_STREAM)
         start_new_thread(self.startListening, ())
+        start_new_thread(self.awaitInput, ())
         while True:
             pass
 
@@ -42,14 +43,14 @@ class Tickets:
             leaderport = int(msg.split()[-1])
             if(receivedNum > self.BallotNum.num):
                 self.BallotNum.num = receivedNum
-                message = "ack "+ str(receivedNum)+ str(self.AcceptNum) + " " + str(self.AcceptVal) + " "+ str(self.port)
+                message = "ack "+ str(receivedNum)+ " " + str(self.AcceptNum.num) + " " + str(self.AcceptVal) + " "+ str(self.port)
                 self.sendMessage(leaderport, message)
 
         if "accept " in msg: #I am not a leader
-            num = msg.split()[1]
-            val = msg.split()[2]
+            num = int(msg.split()[1])
+            val = int(msg.split()[2])
             leaderID = msg.split()[-2]
-            leaderport = msg.split()[-1]
+            leaderport = int(msg.split()[-1])
             if(num>self.BallotNum.num):
                 self.AcceptNum.num = num
                 self.AcceptNum.ID = leaderID
@@ -64,7 +65,7 @@ class Tickets:
             port = msg.split()[-1]
             self.acks[self.numOfAcks] = [bNum, aNum, val, port]
             self.numOfAcks+=1
-            if(self.numOfAcks ==3):
+            if(self.numOfAcks ==2):
                 self.checkVals(self.acks)
 
         # if "accepted" in msg:
@@ -80,9 +81,10 @@ class Tickets:
             message = input('Enter number of tickets you wish to buy ')
             try:
                 val = int(message)
+                self.sendPrepare(self.ID)
             except ValueError:
                 print("Invalid Input")
-            self.sendPrepare(self.ID)
+
 
     # def informDecision(self):
     #     message = "decided "
@@ -92,8 +94,9 @@ class Tickets:
         initialValue = self.AcceptVal
         newVal = initialValue
         num = self.BallotNum.num
+        print(self.acks)
         for i in range(3):
-            if acks[i][2] > initialValue:
+            if int(acks[i][2]) > initialValue:
                 num = acks[i][0]
                 newVal = acks[i][2]
         self.BallotNum.num = num
@@ -104,6 +107,7 @@ class Tickets:
         self.BallotNum.num +=1
         self.BallotNum.ID = ID
         message = "prepare " + str(self.BallotNum.num) + " "+ str(self.BallotNum.ID) + " from "+str(self.port)
+        print(message)
         self.sendToAll(message)
 
     def startListening(self):
@@ -128,7 +132,7 @@ class Tickets:
     def sendMessage(self, port, message):
             rSocket = socket(AF_INET, SOCK_STREAM)
             rSocket.connect((gethostname(), int(port)))
-            print(message)
+            # print(message)
             rSocket.send(message.encode())
             rSocket.close()
 
