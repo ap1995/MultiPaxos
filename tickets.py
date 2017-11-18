@@ -24,7 +24,7 @@ class Tickets:
         self.AcceptVal = 0
         self.numOfAcks = 0
         self.accepts = 0
-        w, h = 4, 5
+        w, h = 4, 3
         self.acks = [[0 for x in range(w)] for y in range(h)]
         self.acceptances = [[0 for x in range(w)] for y in range(h)]
         self.s = socket(AF_INET, SOCK_STREAM)
@@ -66,7 +66,7 @@ class Tickets:
             self.numOfAcks+=1
             if(self.numOfAcks ==3):
                 self.checkVals(self.acks)
-    
+
         # if "accepted" in msg:
         #     b = msg.split()[1]
         #     v = msg.split()[-1]
@@ -83,7 +83,7 @@ class Tickets:
             except ValueError:
                 print("Invalid Input")
             self.sendPrepare(self.ID)
-            
+
     # def informDecision(self):
     #     message = "decided "
     #     self.sendToAll(message)
@@ -108,6 +108,8 @@ class Tickets:
 
     def startListening(self):
         # Add my details to configdata
+        # configdata["kiosks"].update({ID: [str(self.hostname), str(self.port)],})
+        # print(configdata)
         try:
             self.s.bind((self.hostname, int(self.port)))
             self.s.listen(3)
@@ -130,7 +132,7 @@ class Tickets:
             rSocket.send(message.encode())
             rSocket.close()
 
-        # To send messages to everyone
+    # To send messages to everyone
     def sendToAll(self, message):
         for i in configdata["kiosks"]:
             if (configdata["kiosks"][i][1] == self.port):  ## To not send to yourself
@@ -156,6 +158,6 @@ with open('config.json') as configfile:
 
 delay = configdata["delay"]
 # runningConfig = dict()
-ID = sys.argv[1]
+ID = str(sys.argv[1])
 tickets = configdata["tickets"]
 c = Tickets(ID)
