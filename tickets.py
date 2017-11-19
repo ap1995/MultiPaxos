@@ -26,7 +26,7 @@ class Tickets:
         self.accepts = 0
         w, h = 4, 3
         self.acks = [[0 for x in range(w)] for y in range(h)]
-        self.acceptances = [[0 for x in range(w)] for y in range(h)]
+        self.acceptances = [[0, 0], [0, 0]]
         self.s = socket(AF_INET, SOCK_STREAM)
         start_new_thread(self.startListening, ())
         start_new_thread(self.awaitInput, ())
@@ -51,7 +51,8 @@ class Tickets:
             val = int(msg.split()[2])
             leaderID = msg.split()[-2]
             leaderport = int(msg.split()[-1])
-            if(num>self.BallotNum.num):
+            # print("My BallotNum when accept message received" + str(self.BallotNum.num))
+            if(num>=self.BallotNum.num):
                 self.AcceptNum.num = num
                 self.AcceptNum.ID = leaderID
                 self.AcceptVal = val # Accept Proposal
@@ -64,31 +65,35 @@ class Tickets:
             val = msg.split()[3]
             port = msg.split()[-1]
             self.acks[self.numOfAcks] = [bNum, aNum, val, port]
+            print("Acknowledgements")
+            print(self.acks)
             self.numOfAcks+=1
             if(self.numOfAcks ==2):
                 self.checkVals(self.acks)
 
-        # if "accepted" in msg:
-        #     b = msg.split()[1]
-        #     v = msg.split()[-1]
-        #     self.acceptances[self.accepts] = [b, v]
-        #     self.accepts+=1
-        #     if(self.accepts ==3):
-        #         self.informDecision()
+        if "accepted" in msg:
+            b = int(msg.split()[1])
+            v = int(msg.split()[-1])
+            self.acceptances[self.accepts] = [b, v]
+            print("Acceptances: ")
+            print(self.acceptances)
+            self.accepts+=1
+            if(self.accepts ==2):
+                self.informDecision()
 
     def awaitInput(self):
         while True:
             message = input('Enter number of tickets you wish to buy ')
             try:
-                val = int(message)
+                val = int(message) # change to if 'Buy 2' or 'show'
                 self.sendPrepare(self.ID)
             except ValueError:
                 print("Invalid Input")
 
-
-    # def informDecision(self):
-    #     message = "decided "
-    #     self.sendToAll(message)
+    def informDecision(self):
+        #write decision to a text file (stub log)
+        message = "decided "
+        self.sendToAll(message)
 
     def checkVals(self, acks):
         initialValue = self.AcceptVal
@@ -112,8 +117,9 @@ class Tickets:
 
     def startListening(self):
         # Add my details to configdata
-        # configdata["kiosks"].update({ID: [str(self.hostname), str(self.port)],})
-        # print(configdata)
+        # with open('live.txt', 'w') as livefile:
+        #     json.dump({ID:configdata["kiosks"][ID]}, livefile, ensure_ascii=False)
+        # print(livefile)
         try:
             self.s.bind((self.hostname, int(self.port)))
             self.s.listen(3)
@@ -154,14 +160,12 @@ class Tickets:
     def closeSocket(self):
         self.s.close()
 
-
 ######## MAIN #########
 
 with open('config.json') as configfile:
     configdata = json.load(configfile)
 
 delay = configdata["delay"]
-# runningConfig = dict()
 ID = str(sys.argv[1])
 tickets = configdata["tickets"]
 c = Tickets(ID)
