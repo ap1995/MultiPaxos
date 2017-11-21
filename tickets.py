@@ -38,6 +38,16 @@ class Tickets:
     def receiveMessages(self, conn, addr):
         msg = conn.recv(1024).decode()
         print(msg)
+        
+        if "accepted " in msg:
+            ballNum = int(msg.split()[1])
+            v = int(msg.split()[-1])
+            self.acceptances[self.accepts] = [ballNum, v]
+            print("Acceptances: ")
+            print(self.acceptances)
+            self.accepts += 1
+            # if (self.accepts == 2):  # n-1
+                # Commit to log
 
         if "accept " in msg: #I am not a leader
             num = int(msg.split()[1])
@@ -51,13 +61,14 @@ class Tickets:
                 self.AcceptVal = val # Accept Proposal
             message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal) #####?????#####
             self.sendMessage(leaderport, message)
-            
+
         if "Value received" in msg:
             valReceived = msg.split()[-2]
             self.sendAcceptRequests(valReceived)
+            
 
     def leaderCheck(self): #Ring Election to be implemented
-        # with open('config.json') as config: 
+        # with open('config.json') as config:
         #     data = json.load(config)
         # config.close()
         # for i in configdata["kiosks"]:
@@ -65,7 +76,7 @@ class Tickets:
         # if (configdata["leader"] == "False"):
         #     data["leader"] = "True"
         #     self.leaderport = self.port
-        #     data["leaderID"] = str(self.port)  
+        #     data["leaderID"] = str(self.port)
         #     with open('config.json', 'w') as config:
         #         json.dump(data, config)
         #     config.close()
@@ -123,9 +134,6 @@ class Tickets:
 
     # To send messages to everyone
     def sendToAll(self, message):
-        with open('live.json') as liveProc:
-            json.loads(liveProc)
-        
         for i in configdata["kiosks"]:
             if (configdata["kiosks"][i][1] == self.port):  ## To not send to yourself
                 continue
