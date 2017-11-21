@@ -19,15 +19,17 @@ class Tickets:
         self.port = configdata["kiosks"][ID][1]
         self.processID = int(self.port) - 4000
         self.hostname = gethostname()
-        self.BallotNum = BallotNum(0,0)
+        self.BallotNum = BallotNum(0,ID)
         self.AcceptNum = BallotNum(0,0)
         self.AcceptVal = 0
         self.numOfAcks = 0
         self.accepts = 0
-        w, h = 4, 3
+        self.leaderport = 0
+        w, h = 5, 2 # 4, n-1
         self.acks = [[0 for x in range(w)] for y in range(h)]
-        self.acceptances = [[0, 0], [0, 0]]
+        self.acceptances = [[0 for x in range(2)] for y in range(2)] #n-1 rows
         self.s = socket(AF_INET, SOCK_STREAM)
+        self.leaderCheck()
         start_new_thread(self.startListening, ())
         start_new_thread(self.awaitInput, ())
         while True:
@@ -36,15 +38,6 @@ class Tickets:
     def receiveMessages(self, conn, addr):
         msg = conn.recv(1024).decode()
         print(msg)
-
-        if "prepare" in msg:
-            receivedNum = int(msg.split()[1])
-            # receivedID = int(msg.split()[2])
-            leaderport = int(msg.split()[-1])
-            if(receivedNum > self.BallotNum.num):
-                self.BallotNum.num = receivedNum
-                message = "ack "+ str(receivedNum)+ " " + str(self.AcceptNum.num) + " " + str(self.AcceptVal) + " "+ str(self.port)
-                self.sendMessage(leaderport, message)
 
         if "accept " in msg: #I am not a leader
             num = int(msg.split()[1])
@@ -58,67 +51,53 @@ class Tickets:
                 self.AcceptVal = val # Accept Proposal
             message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal) #####?????#####
             self.sendMessage(leaderport, message)
+            
+        if "Value received" in msg:
+            valReceived = msg.split()[-2]
+            self.sendAcceptRequests(valReceived)
 
-        if "ack" in msg:
-            bNum = msg.split()[1]
-            aNum = msg.split()[2]
-            val = msg.split()[3]
-            port = msg.split()[-1]
-            self.acks[self.numOfAcks] = [bNum, aNum, val, port]
-            print("Acknowledgements")
-            print(self.acks)
-            self.numOfAcks+=1
-            if(self.numOfAcks ==2):
-                self.checkVals(self.acks)
+    def leaderCheck(self): #Ring Election to be implemented
+        # with open('config.json') as config: 
+        #     data = json.load(config)
+        # config.close()
+        # for i in configdata["kiosks"]:
+        self.leaderport = "C3"
+        # if (configdata["leader"] == "False"):
+        #     data["leader"] = "True"
+        #     self.leaderport = self.port
+        #     data["leaderID"] = str(self.port)  
+        #     with open('config.json', 'w') as config:
+        #         json.dump(data, config)
+        #     config.close()
+        # else
+        #     self.leaderport = configdata["leaderID"]
+        #     print("Leader is " + self.leaderport)
 
-        if "accepted" in msg:
-            b = int(msg.split()[1])
-            v = int(msg.split()[-1])
-            self.acceptances[self.accepts] = [b, v]
-            print("Acceptances: ")
-            print(self.acceptances)
-            self.accepts+=1
-            if(self.accepts ==2):
-                self.informDecision()
+    def sendAcceptRequests(self, val):
+        initialValue = self.AcceptVal
+        newVal = initialValue
+        self.BallotNum.num+=1
+        message = "accept "+ str(self.BallotNum.num) + " "+ str(newVal) + " coming from "+ str(self.ID) + " " + str(self.port)
+        self.sendToAll(message)
 
     def awaitInput(self):
         while True:
             message = input('Enter number of tickets you wish to buy ')
             try:
-                val = int(message) # change to if 'Buy 2' or 'show'
-                self.sendPrepare(self.ID)
+                val = int(message)  # change to if 'Buy 2' or 'show'
+                if (self.leaderport == self.port):
+                    self.sendAcceptRequests(val)
+                else:
+                    msg = "Value received " + str(val) + " " + str(self.port)
+                    self.sendMessage(self.leaderport, msg)  # NEEDS TO BE CHANGED
             except ValueError:
                 print("Invalid Input")
 
-    def informDecision(self):
-        #write decision to a text file (stub log)
-        message = "decided "
-        self.sendToAll(message)
-
-    def checkVals(self, acks):
-        initialValue = self.AcceptVal
-        newVal = initialValue
-        num = self.BallotNum.num
-        print(self.acks)
-        for i in range(3):
-            if int(acks[i][2]) > initialValue:
-                num = acks[i][0]
-                newVal = acks[i][2]
-        self.BallotNum.num = num
-        message = "accept "+ str(num) + " "+ str(newVal) + " coming from "+ str(self.ID) + " " + str(self.port)
-        self.sendToAll(message)
-
-    def sendPrepare(self, ID):
-        self.BallotNum.num +=1
-        self.BallotNum.ID = ID
-        message = "prepare " + str(self.BallotNum.num) + " "+ str(self.BallotNum.ID) + " from "+str(self.port)
-        print(message)
-        self.sendToAll(message)
 
     def startListening(self):
         # Add my details to configdata
-        # with open('live.txt', 'w') as livefile:
-        #     json.dump({ID:configdata["kiosks"][ID]}, livefile, ensure_ascii=False)
+        with open('live.json', 'a') as livefile:
+            json.dump({ID:configdata["kiosks"][ID]}, livefile, ensure_ascii=False)
         # print(livefile)
         try:
             self.s.bind((self.hostname, int(self.port)))
@@ -144,18 +123,24 @@ class Tickets:
 
     # To send messages to everyone
     def sendToAll(self, message):
+        with open('live.json') as liveProc:
+            json.loads(liveProc)
+        
         for i in configdata["kiosks"]:
             if (configdata["kiosks"][i][1] == self.port):  ## To not send to yourself
                 continue
             else:
-                cSocket = socket(AF_INET, SOCK_STREAM)
-                ip, port = configdata["kiosks"][i][0], configdata["kiosks"][i][1]
-                port = int(port)
-                cSocket.connect((gethostname(), port))
-                print('Connected to port number ' + configdata["kiosks"][i][1])
-                cSocket.send(message.encode())
-                print('Message sent to customer at port ' + str(port))
-                cSocket.close()
+                try:
+                    cSocket = socket(AF_INET, SOCK_STREAM)
+                    ip, port = configdata["kiosks"][i][0], configdata["kiosks"][i][1]
+                    port = int(port)
+                    cSocket.connect((gethostname(), port))
+                    print('Connected to port number ' + configdata["kiosks"][i][1])
+                    cSocket.send(message.encode())
+                    print('Message sent to customer at port ' + str(port))
+                    cSocket.close()
+                except ConnectionError:
+                    print("Dead")
 
     def closeSocket(self):
         self.s.close()
