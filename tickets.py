@@ -38,7 +38,7 @@ class Tickets:
     def receiveMessages(self, conn, addr):
         msg = conn.recv(1024).decode()
         print(msg)
-        
+
         if "accepted " in msg:
             ballNum = int(msg.split()[1])
             v = int(msg.split()[-1])
@@ -65,14 +65,14 @@ class Tickets:
         if "Value received" in msg:
             valReceived = msg.split()[-2]
             self.sendAcceptRequests(valReceived)
-            
+
 
     def leaderCheck(self): #Ring Election to be implemented
         # with open('config.json') as config:
         #     data = json.load(config)
         # config.close()
         # for i in configdata["kiosks"]:
-        self.leaderport = "C3"
+        self.leaderport = 4003
         # if (configdata["leader"] == "False"):
         #     data["leader"] = "True"
         #     self.leaderport = self.port
@@ -94,13 +94,14 @@ class Tickets:
     def awaitInput(self):
         while True:
             message = input('Enter number of tickets you wish to buy ')
+            val = int(message)
             try:
-                val = int(message)  # change to if 'Buy 2' or 'show'
+                  # change to if 'Buy 2' or 'show'
                 if (self.leaderport == self.port):
                     self.sendAcceptRequests(val)
                 else:
                     msg = "Value received " + str(val) + " " + str(self.port)
-                    self.sendMessage(self.leaderport, msg)  # NEEDS TO BE CHANGED
+                    self.sendMessage(self.leaderport, msg)
             except ValueError:
                 print("Invalid Input")
 
