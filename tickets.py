@@ -46,8 +46,10 @@ class Tickets:
             print("Acceptances: ")
             print(self.acceptances)
             self.accepts += 1
-            # if (self.accepts == 2):  # n-1
-                # Commit to log
+            if (self.accepts == 2):  # n-1
+                print("Add to log")# Commit to log
+                self.acceptances = [[0 for x in range(2)] for y in range(2)]
+                self.accepts =0
 
         if "accept " in msg: #I am not a leader
             num = int(msg.split()[1])
@@ -86,7 +88,7 @@ class Tickets:
 
     def sendAcceptRequests(self, val):
         initialValue = self.AcceptVal
-        newVal = initialValue
+        newVal = val
         self.BallotNum.num+=1
         message = "accept "+ str(self.BallotNum.num) + " "+ str(newVal) + " coming from "+ str(self.ID) + " " + str(self.port)
         self.sendToAll(message)
