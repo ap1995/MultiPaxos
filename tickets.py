@@ -69,7 +69,7 @@ class Tickets:
             self.sendAcceptRequests(valReceived)
 
 
-    def leaderCheck(self): #Ring Election to be implemented
+    def leaderCheck(self): #Election to be implemented
         # with open('config.json') as config:
         #     data = json.load(config)
         # config.close()
