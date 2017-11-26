@@ -97,7 +97,6 @@ class Tickets:
             valReceived = msg.split()[-2]
             self.sendAcceptRequests(valReceived)
 
-###############################################
     def leaderCheck(self): #Election to be implemented... #counter later implementation
          if self.port != self.leaderport:
              if self.noReplies==0:
