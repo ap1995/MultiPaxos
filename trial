@@ -162,7 +162,7 @@ class Tickets:
 
     def sendHeartbeat(self):
         while(1):
-            for i in range(0,499):
+            for self.timer in range(0,499):
                 pass
             msg = "RPC"
             self.sendToAll(msg)
