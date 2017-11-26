@@ -94,7 +94,7 @@ class Tickets:
                 self.sendToAll(msg)
 
         if "RPC" in msg:
-            self.timer = 0
+            self.timer = 0 #########3 put a forever runnning loop for timer
             self.leaderalive = 1
 
 
@@ -162,10 +162,11 @@ class Tickets:
 
     def sendHeartbeat(self):
         while(1):
-            for self.timer in range(0,499):
+            for i in range(0,499):
                 pass
             msg = "RPC"
             self.sendToAll(msg)
+
 
     def sendMessage(self, port, message):
             rSocket = socket(AF_INET, SOCK_STREAM)
