@@ -25,14 +25,15 @@ class Tickets:
         self.numOfAcks = 0
         self.accepts = 0
         self.leaderport = 4001
-        self.counter = 0
-        self.alive = 1
+        self.timer = 0
+        self.leaderalive = 0
         self.noReplies = 0
         w, h = 5, 2 # 4, n-1
         self.acks = [[0 for x in range(w)] for y in range(h)]
         self.acceptances = [[0 for x in range(2)] for y in range(2)] #n-1 rows
         self.s = socket(AF_INET, SOCK_STREAM)
         self.leaderCheck()
+
         start_new_thread(self.startListening, ())
         start_new_thread(self.awaitInput, ())
         while True:
@@ -75,8 +76,8 @@ class Tickets:
             tosendto = int(msg.split()[-1])
             if num1>= self.BallotNum.num:
                 self.BallotNum.num =num1
-            message = "ack"+ str(self.BallotNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal)
-            self.sendMessage(tosendto, message) ############## to the one who sends nt to leader
+                message = "ack"+ str(self.BallotNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal)
+                self.sendMessage(tosendto, message) ############## to the one who sends nt to leader
 
 
         if "ack" in msg:
@@ -92,17 +93,22 @@ class Tickets:
                 msg = "accept" + str(self.BallotNum.num) + str(self.AcceptVal)
                 self.sendToAll(msg)
 
+        if "RPC" in msg:
+            self.timer = 0
+            self.leaderalive = 1
+
 
         if "Value received" in msg:
             valReceived = msg.split()[-2]
             self.sendAcceptRequests(valReceived)
 
+
     def leaderCheck(self): #Election to be implemented... #counter later implementation
-         if self.port != self.leaderport:
-             if self.noReplies==0:
+         if self.leaderalive==0:
+             # if self.noReplies==0:
                 self.startElection()
-             else:
-                  self.counter+=1
+             # else:
+             #      self.counter+=1
     def startElection(self):
          self.BallotNum.num+=1
          message =  "prepare "+ str(self.BallotNum.num) + str(self.processID)
@@ -124,12 +130,13 @@ class Tickets:
             try:
                   # change to if 'Buy 2' or 'show'
                 if (self.leaderport == self.port):
+                    start_new_thread(self.sendHeartbeat, ())
                     self.sendAcceptRequests(val)
                 else:
                     msg = "Value received " + str(val) + " " + str(self.port)
                     self.leaderCheck()
                     self.sendMessage(self.leaderport, msg)
-                    except ValueError:
+            except ValueError:
                 print("Invalid Input")
 
 
@@ -153,7 +160,12 @@ class Tickets:
             self.s.close()
             sys.exit()
 
-            
+    def sendHeartbeat(self):
+        while(1):
+            for i in range(0,499):
+                pass
+            msg = "RPC"
+            self.sendToAll(msg)
 
     def sendMessage(self, port, message):
             rSocket = socket(AF_INET, SOCK_STREAM)
