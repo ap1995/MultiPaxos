@@ -19,13 +19,13 @@ class Tickets:
         self.port = configdata["kiosks"][ID][1]
         self.processID = int(self.port) - 4000 #1
         self.hostname = gethostname()
-        self.BallotNum = BallotNum(0,ID)
+        self.BallotNum = BallotNum(0,self.port)
         self.AcceptNum = BallotNum(0,0)
         self.AcceptVal = 0
         self.numOfAcks = 0
         self.accepts = 0
         self.leaderport = 4003
-        self.leaderIsAlive = False
+        self.leaderIsAlive = True
         self.electionInProgress = False
         w, h = 5, 2 # 4, n-1
         self.acks = [[0 for x in range(w)] for y in range(h)]
@@ -49,6 +49,30 @@ class Tickets:
 
         if "Leader" in msg:
             self.leaderport = int(msg.split()[-1])
+            self.electionInProgress = False
+            mesg = "Election ended"
+            self.sendToAll(mesg)
+
+        if "prepare" in msg:
+            num1 = int(msg.split()[1])
+            receiverport = int(msg.split()[-1])
+            if num1 > self.BallotNum.num or (num1 == self.BallotNum.num and receiverport > int(self.BallotNum.ID)):
+                self.BallotNum.num = num1
+                message = "ack" + str(self.BallotNum.num) + " " + str(self.AcceptNum.num) + " " + str(self.AcceptNum.ID) + str(self.AcceptVal)
+                self.sendMessage(receiverport, message)
+
+        if "ack" in msg:
+            num1 = int(msg.split()[1])
+            receivedVal = int(msg.split()[-1])
+            self.numOfAcks += 1
+            # majority = math.ceil((len(CLIENTS) + 2) / 2)
+            if receivedVal > self.AcceptVal:
+                self.AcceptVal = receivedVal
+            if self.numOfAcks == 2:
+                leaderport = self.leaderport
+                msg = "Leader" + str(leaderport)
+                      # str(self.BallotNum.num) + " " + str(self.AcceptVal)
+                self.sendToAll(msg)
 
         if "accepted " in msg:
             ballNum = int(msg.split()[1])
@@ -75,7 +99,7 @@ class Tickets:
             message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal) #####?????#####
             self.sendMessage(senderport, message)
 
-        if "Value received" in msg:
+        if "Value received" in msg: #By leader
             valReceived = msg.split()[-2]
             self.sendAcceptRequests(valReceived)
 
@@ -99,11 +123,10 @@ class Tickets:
         self.electionInProgress =True
         self.sendToAll(message)
         time.sleep(5)
-        self.leaderport = 4003
-        # Ask everyone greater than you if they are alive
-        self.electionInProgress = False
-        msg = "Election ended"
-        self.sendToAll(msg)
+        # self.leaderport = 4003
+        self.BallotNum.num += 1
+        message = "prepare " + str(self.BallotNum.num) + " " + str(self.BallotNum.ID)
+        self.sendToAll(message)
 
     def sendAcceptRequests(self, val):
         initialValue = self.AcceptVal
@@ -120,7 +143,7 @@ class Tickets:
                   # change to if 'Buy 2' or 'show'
                 if (self.leaderport == self.port):
                     self.sendAcceptRequests(val)
-                else:
+                elif self.leaderIsAlive == True :
                     msg = "Value received " + str(val) + " " + str(self.port)
                     self.sendMessage(self.leaderport, msg)
             except ValueError:
