@@ -92,7 +92,7 @@ class Tickets:
             if self.numOfAcks==2:
                 leaderport = self.leaderport
                 leaderID = self.processID
-                msg = "accept" + str(self.BallotNum.num) + str(self.AcceptVal)
+                msg = "accept" + str(self.BallotNum.num) + " " + str(self.AcceptVal)
                 self.sendToAll(msg)
 
         if "RPC" in msg:
@@ -115,7 +115,7 @@ class Tickets:
              #      self.counter+=1
     def startElection(self):
          self.BallotNum.num+=1
-         message =  "prepare "+ str(self.BallotNum.num) + str(self.processID)
+         message =  "prepare "+ str(self.BallotNum.num) + " "+ str(self.processID)
          self.sendToAll(message)
 
     def timer(self):
