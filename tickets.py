@@ -150,11 +150,11 @@ class Tickets:
     def awaitInput(self):
         while True:
             message = input('Hello, welcome to the Ticket Kiosk.')
-            if "Buy" in message:
-                val = int(message.split()[-1])
-                self.pending = val
-                try:
-                      # change to if 'Buy 2' or 'show'
+            try:
+                if "Buy" in message:
+                    val = int(message.split()[-1])
+                    self.pending = val
+                    
                     if (self.leaderport == self.port):
                         self.sendAcceptRequests(val)
                     elif self.leaderIsAlive == True :
@@ -162,8 +162,13 @@ class Tickets:
                         self.sendMessage(self.leaderport, msg)
                     else:
                         self.leaderCheck()
-                except ValueError:
-                    print("Invalid Input")
+
+                if "show" in message:
+                    print("My log is: ")
+                    print(self.log)
+
+            except ValueError:
+                print("Invalid Input")
 
     def startListening(self):
         # Add my details to configdata
