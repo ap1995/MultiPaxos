@@ -5,7 +5,6 @@ import shutil
 import random
 import time
 import sys
-# import ballot
 
 class BallotNum:
     def __init__(self, num, ID):
@@ -27,6 +26,7 @@ class Tickets:
         self.leaderport = 4003
         self.leaderIsAlive = True
         self.electionInProgress = False
+        self.log = []
         w, h = 5, 2 # 4, n-1
         self.acks = [[0 for x in range(w)] for y in range(h)]
         self.acceptances = [[0 for x in range(2)] for y in range(2)] #n-1 rows
@@ -37,8 +37,8 @@ class Tickets:
         start_new_thread(self.awaitInput, ()) # If leader send Heartbeat else timer
         if self.leaderport == int(self.port):
             start_new_thread(self.sendHeartbeat(), ())
-        else:
-            start_new_thread(self.timer, ())
+        # else:
+        #     start_new_thread(self.timer, ())
 
         while True:
             pass
@@ -55,11 +55,11 @@ class Tickets:
 
         if "prepare" in msg:
             num1 = int(msg.split()[1])
-            receiverport = int(msg.split()[-1])
-            if num1 > self.BallotNum.num or (num1 == self.BallotNum.num and receiverport > int(self.BallotNum.ID)):
+            sendToPort = int(msg.split()[-1])
+            if num1 > self.BallotNum.num or (num1 == self.BallotNum.num and sendToPort > int(self.BallotNum.ID)):
                 self.BallotNum.num = num1
                 message = "ack" + str(self.BallotNum.num) + " " + str(self.AcceptNum.num) + " " + str(self.AcceptNum.ID) + str(self.AcceptVal)
-                self.sendMessage(receiverport, message)
+                self.sendMessage(sendToPort, message)
 
         if "ack" in msg:
             num1 = int(msg.split()[1])
@@ -82,7 +82,10 @@ class Tickets:
             print(self.acceptances)
             self.accepts += 1
             if (self.accepts == 2):  # n-1
-                print("Add to log")# Commit to log
+                message = "Add to log " + str(v) # Commit to log
+                print(message)
+                self.log.append(v)
+                self.sendToAll(message)
                 self.acceptances = [[0 for x in range(2)] for y in range(2)]
                 self.accepts =0
 
@@ -92,7 +95,7 @@ class Tickets:
             senderID = msg.split()[-2]
             senderport = int(msg.split()[-1])
             # print("My BallotNum when accept message received" + str(self.BallotNum.num))
-            if(num>=self.BallotNum.num):
+            if num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID)):
                 self.AcceptNum.num = num
                 self.AcceptNum.ID = senderID
                 self.AcceptVal = val # Accept Proposal
@@ -105,6 +108,7 @@ class Tickets:
 
         if "heartbeat" in msg:
             self.leaderIsAlive = True
+            self.timer()
 
         if "Election " in msg:
             electionStatus = msg.split()[-1]
@@ -112,6 +116,12 @@ class Tickets:
                 self.electionInProgress = True
             if electionStatus == "ended":
                 self.electionInProgress = False
+
+        if "Add to log" in msg:
+            val = int(msg.split()[-1])
+            self.log.append(val)
+            print("Current log is: ")
+            print(self.log)
 
     def leaderCheck(self): #Check if Leader is alive
         if self.leaderIsAlive == False:
@@ -177,14 +187,13 @@ class Tickets:
         rSocket.close()
 
     def timer(self):
-        timetosleep = 1 + (self.processID*0.1)
-        time.sleep(timetosleep) # Sleep for 1s + processID*0.1
+        timetosleep = 0.5 + (self.processID*0.1)
+        time.sleep(timetosleep) # Sleep for 0.5s + processID*0.1
         self.leaderCheck()
 
     def sendHeartbeat(self):
         while(1):
-            for i in range(0,499):
-                pass
+            time.sleep(0.5)
             msg = "heartbeat"
             self.sendToAll(msg)
 
@@ -206,7 +215,8 @@ class Tickets:
                     print('Message sent to customer at port ' + str(port))
                     cSocket.close()
                 except ConnectionError:
-                    print(str(portnum) + " is dead")
+                    pass
+                    # print(str(portnum) + " is dead")
 
     def closeSocket(self):
         self.s.close()
