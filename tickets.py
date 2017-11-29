@@ -2,7 +2,6 @@ from socket import *
 from _thread import *
 import json
 import threading
-import shutil
 import random
 import time
 import sys
@@ -112,7 +111,10 @@ class Tickets:
             valReceived = msg.split()[-2]
             self.sendAcceptRequests(valReceived)
 
-        if "heartbeat" in msg:
+        if "heartbeat" in msg: # leader's log received and made my log
+            msg = msg.replace("heartbeat ", '')
+            msg = json.loads(msg)
+            self.log = msg
             self.leaderIsAlive = True
             self.timer()
             self.leaderIsAlive = False
@@ -155,8 +157,9 @@ class Tickets:
 
     def awaitInput(self):
         while True:
-            message = input('Enter number of tickets you wish to buy ')
-            val = int(message)
+            message = input('Hello, welcome to the Ticket Kiosk.')
+            if "Buy" in message:
+                val = int(message.split()[-1])
             self.pending = val
             try:
                   # change to if 'Buy 2' or 'show'
@@ -211,12 +214,14 @@ class Tickets:
     # def stopSendHeartbeat(self):
     #     self.t.cancel()
 
-    def sendHeartbeat(self):
+    def sendHeartbeat(self): #send entire log instead of text
         msg = "heartbeat"
+        msg= msg + str(self.log)
         self.sendToAll(msg)
 
     # To send messages to everyone
     def sendToAll(self, message):
+        # portnum = 0
         numofLive = 0
         for i in configdata["kiosks"]:
             if (configdata["kiosks"][i][1] == self.port):  ## To not send to yourself
