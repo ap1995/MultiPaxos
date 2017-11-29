@@ -26,8 +26,8 @@ class Tickets:
         self.accepts = 0
         self.pending = 0
         self.majorityofLive = 2
-        self.leaderport = 4003
-        self.leaderIsAlive = True
+        self.leaderport = 0
+        self.leaderIsAlive = False
         self.electionInProgress = False
         self.log = []
         w, h = 5, 2 # 4, n-1
@@ -35,9 +35,10 @@ class Tickets:
         self.acceptances = [[0 for x in range(4)] for y in range(4)] #n-1 rows
         self.s = socket(AF_INET, SOCK_STREAM)
         time.sleep(5)
-        self.leaderCheck()
+        # self.leaderCheck()
         start_new_thread(self.startListening, ())
         start_new_thread(self.awaitInput, ()) # If leader send Heartbeat else timer
+        start_new_thread(self.startSendHeartbeat, ())
 
         while True:
            pass
@@ -149,26 +150,31 @@ class Tickets:
 
     def awaitInput(self):
         while True:
-            message = input('Hello, welcome to the Ticket Kiosk.')
             try:
-                if "Buy" in message:
-                    val = int(message.split()[-1])
-                    self.pending = val
-                    
-                    if (self.leaderport == self.port):
-                        self.sendAcceptRequests(val)
-                    elif self.leaderIsAlive == True :
-                        msg = "Value received " + str(val) + " " + str(self.port)
-                        self.sendMessage(self.leaderport, msg)
-                    else:
-                        self.leaderCheck()
-
-                if "show" in message:
-                    print("My log is: ")
-                    print(self.log)
-
+                message = input('Hello, welcome to the Ticket Kiosk.')
             except ValueError:
                 print("Invalid Input")
+
+            if "Buy" in message:
+                val = int(message.split()[-1])
+                self.pending = val
+
+                if (self.leaderport == self.port):
+                    self.sendAcceptRequests(val)
+                elif self.leaderIsAlive == True :
+                    msg = "Value received " + str(val) + " " + str(self.port)
+                    self.sendMessage(self.leaderport, msg)
+                else:
+                    self.leaderCheck()
+
+            if "show" in message:
+                print("My log is: ")
+                print(self.log)
+            # 
+            # if "Leader" in message:
+            #     msg = "Leader " + self.port
+            #     self.sendToAll(msg)
+
 
     def startListening(self):
         # Add my details to configdata
@@ -205,8 +211,10 @@ class Tickets:
         # self.t = threading.Timer(1.0, self.sendHeartbeat)
         # self.t.start()
         while True:
-            time.sleep(1)
-            self.sendHeartbeat()
+            if self.leaderport == self.port:
+                while True:
+                    time.sleep(1)
+                    self.sendHeartbeat()
 
     # def stopSendHeartbeat(self):
     #     self.t.cancel()
