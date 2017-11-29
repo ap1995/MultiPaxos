@@ -29,7 +29,6 @@ class Tickets:
         self.leaderport = 4003
         self.leaderIsAlive = True
         self.electionInProgress = False
-        # self.t = None
         self.log = []
         w, h = 5, 2 # 4, n-1
         self.acks = [[0 for x in range(w)] for y in range(h)]
@@ -119,13 +118,6 @@ class Tickets:
             self.timer()
             self.leaderIsAlive = False
 
-        # if "Election " in msg:
-        #     electionStatus = msg.split()[-1]
-        #     if electionStatus == "begun":
-        #         self.electionInProgress = True
-        #     if electionStatus == "ended":
-        #         self.electionInProgress = False
-
         if "Add to log" in msg:
             val = int(msg.split()[-1])
             self.log.append(val)
@@ -160,18 +152,18 @@ class Tickets:
             message = input('Hello, welcome to the Ticket Kiosk.')
             if "Buy" in message:
                 val = int(message.split()[-1])
-            self.pending = val
-            try:
-                  # change to if 'Buy 2' or 'show'
-                if (self.leaderport == self.port):
-                    self.sendAcceptRequests(val)
-                elif self.leaderIsAlive == True :
-                    msg = "Value received " + str(val) + " " + str(self.port)
-                    self.sendMessage(self.leaderport, msg)
-                else:
-                    self.leaderCheck()
-            except ValueError:
-                print("Invalid Input")
+                self.pending = val
+                try:
+                      # change to if 'Buy 2' or 'show'
+                    if (self.leaderport == self.port):
+                        self.sendAcceptRequests(val)
+                    elif self.leaderIsAlive == True :
+                        msg = "Value received " + str(val) + " " + str(self.port)
+                        self.sendMessage(self.leaderport, msg)
+                    else:
+                        self.leaderCheck()
+                except ValueError:
+                    print("Invalid Input")
 
     def startListening(self):
         # Add my details to configdata
@@ -215,7 +207,7 @@ class Tickets:
     #     self.t.cancel()
 
     def sendHeartbeat(self): #send entire log instead of text
-        msg = "heartbeat"
+        msg = "heartbeat "
         msg= msg + str(self.log)
         self.sendToAll(msg)
 
