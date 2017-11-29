@@ -23,6 +23,8 @@ class Tickets:
         self.AcceptVal = 0
         self.numOfAcks = 0
         self.accepts = 0
+        self.pending = 0
+        self.majorityofLive = 2
         self.leaderport = 4003
         self.leaderIsAlive = True
         self.electionInProgress = False
@@ -58,7 +60,7 @@ class Tickets:
             sendToPort = int(msg.split()[-1])
             if num1 > self.BallotNum.num or (num1 == self.BallotNum.num and sendToPort > int(self.BallotNum.ID)):
                 self.BallotNum.num = num1
-                message = "ack" + str(self.BallotNum.num) + " " + str(self.AcceptNum.num) + " " + str(self.AcceptNum.ID) + str(self.AcceptVal)
+                message = "ack " + str(self.BallotNum.num) + " " + str(self.AcceptNum.num) + " " + str(self.AcceptNum.ID) +" " + str(self.AcceptVal)
                 self.sendMessage(sendToPort, message)
 
         if "ack" in msg:
@@ -68,11 +70,12 @@ class Tickets:
             # majority = math.ceil((len(CLIENTS) + 2) / 2)
             if receivedVal > self.AcceptVal:
                 self.AcceptVal = receivedVal
-            if self.numOfAcks == 2:
-                leaderport = self.leaderport
-                msg = "Leader" + str(leaderport)
+            if self.numOfAcks == self.majorityofLive: # needs to be majority of live processes
+                leaderport = self.port
+                msg = "Leader " + str(leaderport)
                       # str(self.BallotNum.num) + " " + str(self.AcceptVal)
                 self.sendToAll(msg)
+                self.sendAcceptRequests(self.pending)
 
         if "accepted " in msg:
             ballNum = int(msg.split()[1])
@@ -81,7 +84,7 @@ class Tickets:
             print("Acceptances: ")
             print(self.acceptances)
             self.accepts += 1
-            if (self.accepts == 2):  # n-1
+            if (self.accepts == self.majorityofLive):  # n-1
                 message = "Add to log " + str(v) # Commit to log
                 print(message)
                 self.log.append(v)
@@ -109,6 +112,7 @@ class Tickets:
         if "heartbeat" in msg:
             self.leaderIsAlive = True
             self.timer()
+            self.leaderIsAlive = False
 
         if "Election " in msg:
             electionStatus = msg.split()[-1]
@@ -149,6 +153,7 @@ class Tickets:
         while True:
             message = input('Enter number of tickets you wish to buy ')
             val = int(message)
+            self.pending = val
             try:
                   # change to if 'Buy 2' or 'show'
                 if (self.leaderport == self.port):
@@ -156,6 +161,8 @@ class Tickets:
                 elif self.leaderIsAlive == True :
                     msg = "Value received " + str(val) + " " + str(self.port)
                     self.sendMessage(self.leaderport, msg)
+                else:
+                    self.leaderCheck()
             except ValueError:
                 print("Invalid Input")
 
@@ -187,19 +194,17 @@ class Tickets:
         rSocket.close()
 
     def timer(self):
-        timetosleep = 0.5 + (self.processID*0.1)
-        time.sleep(timetosleep) # Sleep for 0.5s + processID*0.1
-        self.leaderCheck()
+        timetosleep = 0.4 + (self.processID*0.1)
+        time.sleep(timetosleep) # Sleep for 0.4s + processID*0.1
 
     def sendHeartbeat(self):
         while(1):
-            time.sleep(0.5)
+            time.sleep(1)
             msg = "heartbeat"
             self.sendToAll(msg)
 
     # To send messages to everyone
     def sendToAll(self, message):
-        portnum = 0
         for i in configdata["kiosks"]:
             if (configdata["kiosks"][i][1] == self.port):  ## To not send to yourself
                 continue
