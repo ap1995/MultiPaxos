@@ -53,7 +53,8 @@ class Tickets:
             self.electionInProgress = False
             self.leaderIsAlive = True
             mesg = "Election ended"
-            self.sendToAll(mesg)
+            print(mesg)
+            # self.sendToAll(mesg)
 
         if "prepare" in msg:
             num1 = int(msg.split()[1])
@@ -116,12 +117,12 @@ class Tickets:
             self.timer()
             self.leaderIsAlive = False
 
-        if "Election " in msg:
-            electionStatus = msg.split()[-1]
-            if electionStatus == "begun":
-                self.electionInProgress = True
-            if electionStatus == "ended":
-                self.electionInProgress = False
+        # if "Election " in msg:
+        #     electionStatus = msg.split()[-1]
+        #     if electionStatus == "begun":
+        #         self.electionInProgress = True
+        #     if electionStatus == "ended":
+        #         self.electionInProgress = False
 
         if "Add to log" in msg:
             val = int(msg.split()[-1])
