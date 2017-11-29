@@ -41,7 +41,6 @@ class Tickets:
         start_new_thread(self.startListening, ())
         start_new_thread(self.awaitInput, ()) # If leader send Heartbeat else timer
 
-
         while True:
            pass
 
@@ -236,6 +235,8 @@ class Tickets:
                 except ConnectionError:
                     pass
         numofLive += 1
+        if numofLive == 1:
+            sys.exit()
         print("Number of live processes " + str(numofLive))
         self.majorityofLive = math.ceil(numofLive/2)
                     # print(str(portnum) + " is dead")
