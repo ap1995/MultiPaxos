@@ -25,6 +25,7 @@ class Tickets:
         self.numOfAcks = 0
         self.accepts = 0
         self.pending = 0
+        self.ticketsLeft = 1000
         self.majorityofLive = 2
         self.leaderport = 0
         self.leaderIsAlive = False
@@ -37,7 +38,7 @@ class Tickets:
         time.sleep(5)
         # self.leaderCheck()
         start_new_thread(self.startListening, ())
-        start_new_thread(self.awaitInput, ()) # If leader send Heartbeat else timer
+        start_new_thread(self.awaitInput, ())
         start_new_thread(self.startSendHeartbeat, ())
 
         while True:
@@ -88,6 +89,7 @@ class Tickets:
             self.accepts += 1
             if (self.accepts == self.majorityofLive):  # n-1
                 message = "Add to log " + str(v) # Commit to log
+                self.ticketsLeft = self.ticketsLeft - v
                 print(message)
                 self.log.append(v)
                 self.sendToAll(message)
@@ -99,8 +101,9 @@ class Tickets:
             val = int(msg.split()[2])
             senderID = msg.split()[-2]
             senderport = int(msg.split()[-1])
+            ticketsAfterSale = self.ticketsLeft - val
             # print("My BallotNum when accept message received" + str(self.BallotNum.num))
-            if num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID)):
+            if (num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID))) and ticketsAfterSale >=0:
                 self.AcceptNum.num = num
                 self.AcceptNum.ID = senderID
                 self.AcceptVal = val # Accept Proposal
@@ -113,6 +116,9 @@ class Tickets:
 
         if "heartbeat" in msg: # leader's log received and made my log
             msg = msg.replace("heartbeat ", '')
+            leader = msg.split()[0]
+            self.leaderport = int(leader)
+            msg = msg.split(' ', 1)[1]
             msg = json.loads(msg)
             self.log = msg
             self.leaderIsAlive = True
@@ -122,8 +128,10 @@ class Tickets:
         if "Add to log" in msg:
             val = int(msg.split()[-1])
             self.log.append(val)
+            self.ticketsLeft = self.ticketsLeft - val
             print("Current log is: ")
             print(self.log)
+            print("Tickets Left: " + str(self.ticketsLeft))
 
     def leaderCheck(self): #Check if Leader is alive
         if self.leaderIsAlive == False:
@@ -170,10 +178,6 @@ class Tickets:
             if "show" in message:
                 print("My log is: ")
                 print(self.log)
-            # 
-            # if "Leader" in message:
-            #     msg = "Leader " + self.port
-            #     self.sendToAll(msg)
 
 
     def startListening(self):
@@ -221,7 +225,7 @@ class Tickets:
 
     def sendHeartbeat(self): #send entire log instead of text
         msg = "heartbeat "
-        msg= msg + str(self.log)
+        msg= msg + str(self.port) + " "+ str(self.log)
         self.sendToAll(msg)
 
     # To send messages to everyone
@@ -250,7 +254,6 @@ class Tickets:
             sys.exit()
         print("Number of live processes " + str(numofLive))
         self.majorityofLive = math.ceil(numofLive/2)
-                    # print(str(portnum) + " is dead")
 
     def closeSocket(self):
         self.s.close()
