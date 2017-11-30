@@ -33,7 +33,7 @@ class Tickets:
         self.log = []
         w, h = 5, 2 # 4, n-1
         self.acks = [[0 for x in range(w)] for y in range(h)]
-        self.acceptances = [[0 for x in range(4)] for y in range(4)] #n-1 rows
+        self.acceptances = [[0 for x in range(4)] for y in range(10)] #n-1 rows
         self.s = socket(AF_INET, SOCK_STREAM)
         time.sleep(5)
         # self.leaderCheck()
@@ -93,7 +93,7 @@ class Tickets:
                 print(message)
                 self.log.append(v)
                 self.sendToAll(message)
-                self.acceptances = [[0 for x in range(4)] for y in range(4)]
+                self.acceptances = [[0 for x in range(4)] for y in range(10)]
                 self.accepts =0
 
         if "accept " in msg: #I am not a leader
@@ -103,12 +103,16 @@ class Tickets:
             senderport = int(msg.split()[-1])
             ticketsAfterSale = self.ticketsLeft - val
             # print("My BallotNum when accept message received" + str(self.BallotNum.num))
-            if (num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID))) and ticketsAfterSale >=0:
-                self.AcceptNum.num = num
-                self.AcceptNum.ID = senderID
-                self.AcceptVal = val # Accept Proposal
-            message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal) #####?????#####
-            self.sendMessage(senderport, message)
+            if ticketsAfterSale >= 0:
+                if num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID)):
+                    self.AcceptNum.num = num
+                    self.AcceptNum.ID = senderID
+                    self.AcceptVal = val # Accept Proposal
+                message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal) #####?????#####
+                self.sendMessage(senderport, message)
+            else:
+                print("Not enough tickets for your order.")
+
 
         if "Value received" in msg: #By leader
             valReceived = msg.split()[-2]
@@ -118,7 +122,8 @@ class Tickets:
             msg = msg.replace("heartbeat ", '')
             leader = msg.split()[0]
             self.leaderport = int(leader)
-            msg = msg.split(' ', 1)[1]
+            self.ticketsLeft = int(msg.split()[1])
+            msg = msg.split(' ', 2)[2]
             msg = json.loads(msg)
             self.log = msg
             self.leaderIsAlive = True
@@ -208,8 +213,8 @@ class Tickets:
         rSocket.close()
 
     def timer(self):
-        timetosleep = 0.4 + (self.processID*0.1)
-        time.sleep(timetosleep) # Sleep for 0.4s + processID*0.1
+        timetosleep = 0.45 + (self.processID*0.1)
+        time.sleep(timetosleep) # Sleep for 1 + processID*0.1
 
     def startSendHeartbeat(self):
         # self.t = threading.Timer(1.0, self.sendHeartbeat)
@@ -225,7 +230,7 @@ class Tickets:
 
     def sendHeartbeat(self): #send entire log instead of text
         msg = "heartbeat "
-        msg= msg + str(self.port) + " "+ str(self.log)
+        msg= msg + str(self.port) + " "+ str(self.ticketsLeft) + " "+  str(self.log)
         self.sendToAll(msg)
 
     # To send messages to everyone
