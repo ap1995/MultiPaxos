@@ -6,6 +6,7 @@ import random
 import time
 import sys
 import math
+import ast
 
 class BallotNum:
     def __init__(self, num, ID):
@@ -27,6 +28,8 @@ class Tickets:
         self.pending = 0
         self.ticketsLeft = 1000
         self.majorityofLive = 2
+        self.live = 3
+        self.liveProcesses = [4001, 4002, 4003]
         self.leaderport = 0
         self.leaderIsAlive = False
         self.electionInProgress = False
@@ -91,7 +94,7 @@ class Tickets:
                 message = "Add to log " + str(v) # Commit to log
                 self.ticketsLeft = self.ticketsLeft - v
                 print(message)
-                self.log.append(v)
+                self.log.append("Buy "+ str(v))
                 self.sendToAll(message)
                 self.acceptances = [[0 for x in range(4)] for y in range(10)]
                 self.accepts =0
@@ -124,19 +127,29 @@ class Tickets:
             self.leaderport = int(leader)
             self.ticketsLeft = int(msg.split()[1])
             msg = msg.split(' ', 2)[2]
-            msg = json.loads(msg)
-            self.log = msg
+            self.log = ast.literal_eval(msg)
             self.leaderIsAlive = True
             self.timer()
             self.leaderIsAlive = False
 
         if "Add to log" in msg:
-            val = int(msg.split()[-1])
-            self.log.append(val)
-            self.ticketsLeft = self.ticketsLeft - val
-            print("Current log is: ")
-            print(self.log)
-            print("Tickets Left: " + str(self.ticketsLeft))
+            if "failed" in msg or "added" in msg:
+                self.log.append(msg.split()[-2] + " " + msg.split()[-1])
+            else:
+                val = int(msg.split()[-1])
+                self.log.append("Buy " + str(val))
+                self.ticketsLeft = self.ticketsLeft - val
+                print("Current log is: ")
+                print(self.log)
+                print("Tickets Left: " + str(self.ticketsLeft))
+
+        if "Live" in msg:
+            self.live = int(msg.split()[-1])
+
+        if "Processes" in msg:
+            msg = msg.replace("Processes ", '')
+            self.liveProcesses = ast.literal_eval(msg)
+
 
     def leaderCheck(self): #Check if Leader is alive
         if self.leaderIsAlive == False:
@@ -181,6 +194,7 @@ class Tickets:
                     self.leaderCheck()
 
             if "show" in message:
+                self.sendToAll('')
                 print("My log is: ")
                 print(self.log)
 
@@ -204,6 +218,11 @@ class Tickets:
             print('There was an error making a connection')
             self.s.close()
             sys.exit()
+
+    def returnNotMatches(self, a, b):
+        c = [[x for x in a if x not in b], [x for x in b if x not in a]]
+        d = [x for x in c if x != []]
+        return d[0][0]
 
     def sendMessage(self, port, message):
         rSocket = socket(AF_INET, SOCK_STREAM)
@@ -236,7 +255,8 @@ class Tickets:
     # To send messages to everyone
     def sendToAll(self, message):
         # portnum = 0
-        numofLive = 0
+        # numofLive = 0
+        newliveProcesses = []
         for i in configdata["kiosks"]:
             if (configdata["kiosks"][i][1] == self.port):  ## To not send to yourself
                 continue
@@ -250,15 +270,46 @@ class Tickets:
                     print('Connected to port number ' + configdata["kiosks"][i][1])
                     cSocket.send(message.encode())
                     print('Message sent to customer at port ' + str(port))
-                    numofLive += 1
+                    newliveProcesses.append(port)
+                    # numofLive += 1
                     cSocket.close()
                 except ConnectionError:
                     pass
-        numofLive += 1
+        newliveProcesses.append(int(self.port))
+        numofLive = len(newliveProcesses)
+        # numofLive +=1
         if numofLive == 1:
             sys.exit()
         print("Number of live processes " + str(numofLive))
         self.majorityofLive = math.ceil(numofLive/2)
+
+        if numofLive > self.live or numofLive < self.live:             # or newliveProcesses!=self.liveProcesses:
+            self.configChanges(numofLive, newliveProcesses)
+
+    def configChanges(self, numofLive, newliveProcesses):
+        if numofLive > self.live:
+            print("Process was added to system.")
+            c= self.returnNotMatches(newliveProcesses, self.liveProcesses)
+            self.liveProcesses = newliveProcesses
+            self.live = numofLive
+            self.sendToAll("Live " + str(self.live))
+            self.sendToAll("Processes " + str(self.liveProcesses))
+            message = "Add to log " + str(c) + " added"
+            self.sendToAll(message) #Recursion issue
+            self.log.append(message.split()[-2] + " " + message.split()[-1])
+
+
+        if numofLive < self.live:
+            print("Process failed.")
+            c =self.returnNotMatches(newliveProcesses, self.liveProcesses)
+            self.liveProcesses = newliveProcesses
+            self.live = numofLive
+            self.sendToAll("Live " + str(self.live))
+            self.sendToAll("Processes " + str(self.liveProcesses))
+            message = "Add to log " + str(c) + " failed"
+            self.sendToAll(message)
+            self.log.append(message.split()[-2] + " " + message.split()[-1])
+
 
     def closeSocket(self):
         self.s.close()
