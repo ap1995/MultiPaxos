@@ -49,9 +49,9 @@ class Tickets:
 
     def receiveMessages(self, conn, addr):
         msg = conn.recv(1024).decode()
-        print(msg)
 
         if "Leader" in msg:
+            print(msg)
             self.leaderport = int(msg.split()[-1])
             self.electionInProgress = False
             self.leaderIsAlive = True
@@ -60,6 +60,7 @@ class Tickets:
             # self.sendToAll(mesg)
 
         if "prepare" in msg:
+            print(msg)
             num1 = int(msg.split()[1])
             sendToPort = int(msg.split()[-1])
             if num1 > self.BallotNum.num or (num1 == self.BallotNum.num and sendToPort > int(self.BallotNum.ID)):
@@ -68,9 +69,11 @@ class Tickets:
                 self.sendMessage(sendToPort, message)
 
         if "ack" in msg:
+            print(msg)
             num1 = int(msg.split()[1])
             receivedVal = int(msg.split()[-1])
             self.numOfAcks += 1
+            # time.sleep(3)
             # majority = math.ceil((len(CLIENTS) + 2) / 2)
             if receivedVal > self.AcceptVal:
                 self.AcceptVal = receivedVal
@@ -83,13 +86,15 @@ class Tickets:
                 self.sendAcceptRequests(self.pending)
 
         if "accepted " in msg:
+            print(msg)
             ballNum = int(msg.split()[1])
             receivedID = msg.split()[2]
             v = int(msg.split()[-1])
             self.acceptances[self.accepts] = [ballNum, receivedID, v]
+            self.accepts += 1
+            # time.sleep(3)
             print("Acceptances: ")
             print(self.acceptances)
-            self.accepts += 1
             if (self.accepts == self.majorityofLive):  # n-1
                 message = "Add to log " + str(v) # Commit to log
                 self.ticketsLeft = self.ticketsLeft - v
@@ -100,12 +105,14 @@ class Tickets:
                 self.accepts =0
 
         if "accept " in msg: #I am not a leader
+            print(msg)
             num = int(msg.split()[1])
             val = int(msg.split()[2])
             senderID = msg.split()[-2]
             senderport = int(msg.split()[-1])
             ticketsAfterSale = self.ticketsLeft - val
             # print("My BallotNum when accept message received" + str(self.BallotNum.num))
+            time.sleep(1)
             if ticketsAfterSale >= 0:
                 if num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID)):
                     self.AcceptNum.num = num
@@ -118,6 +125,7 @@ class Tickets:
 
 
         if "Value received" in msg: #By leader
+            print(msg)
             valReceived = msg.split()[-2]
             self.sendAcceptRequests(valReceived)
 
@@ -133,6 +141,7 @@ class Tickets:
             self.leaderIsAlive = False
 
         if "Add to log" in msg:
+            print(msg)
             if "failed" in msg or "added" in msg:
                 self.log.append(msg.split()[-2] + " " + msg.split()[-1])
             else:
@@ -159,10 +168,11 @@ class Tickets:
             self.startSendHeartbeat()
 
     def startElection(self): # Leader down, new election begun
-        message = "Election begun"
+        m = "Election begun"
         self.electionInProgress =True
-        self.sendToAll(message)
-        time.sleep(5)
+        print(m)
+        self.sendToAll(m)
+        time.sleep(3)
         self.BallotNum.num += 1
         message = "prepare " + str(self.BallotNum.num) + " " + str(self.BallotNum.ID)
         self.sendToAll(message)
@@ -267,9 +277,9 @@ class Tickets:
                     # portnum = port
                     port = int(port)
                     cSocket.connect((gethostname(), port))
-                    print('Connected to port number ' + configdata["kiosks"][i][1])
+                    # print('Connected to port number ' + configdata["kiosks"][i][1])
                     cSocket.send(message.encode())
-                    print('Message sent to customer at port ' + str(port))
+                    # print('Message sent to customer at port ' + str(port))
                     newliveProcesses.append(port)
                     # numofLive += 1
                     cSocket.close()
@@ -288,25 +298,31 @@ class Tickets:
 
     def configChanges(self, numofLive, newliveProcesses):
         if numofLive > self.live:
-            print("Process was added to system.")
+            # print("Process was added to system.")
             c= self.returnNotMatches(newliveProcesses, self.liveProcesses)
             self.liveProcesses = newliveProcesses
             self.live = numofLive
             self.sendToAll("Live " + str(self.live))
             self.sendToAll("Processes " + str(self.liveProcesses))
             message = "Add to log " + str(c) + " added"
+            print(message)
             self.sendToAll(message) #Recursion issue
             self.log.append(message.split()[-2] + " " + message.split()[-1])
 
 
         if numofLive < self.live:
-            print("Process failed.")
+            # print("Process failed.")
             c =self.returnNotMatches(newliveProcesses, self.liveProcesses)
+            # print("New live processes ")
+            # print(newliveProcesses)
+            # print("Earlier live processes: ")
+            # print(self.liveProcesses)
             self.liveProcesses = newliveProcesses
             self.live = numofLive
             self.sendToAll("Live " + str(self.live))
             self.sendToAll("Processes " + str(self.liveProcesses))
             message = "Add to log " + str(c) + " failed"
+            print(message)
             self.sendToAll(message)
             self.log.append(message.split()[-2] + " " + message.split()[-1])
 
