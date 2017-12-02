@@ -36,9 +36,9 @@ class Tickets:
         self.log = []
         w, h = 5, 2 # 4, n-1
         self.acks = [[0 for x in range(w)] for y in range(h)]
-        self.acceptances = [[0 for x in range(4)] for y in range(10)] #n-1 rows
+        self.acceptances = [[0 for x in range(9)] for y in range(10)] #n-1 rows
         self.s = socket(AF_INET, SOCK_STREAM)
-        time.sleep(5)
+        time.sleep(3)
         # self.leaderCheck()
         start_new_thread(self.startListening, ())
         start_new_thread(self.awaitInput, ())
@@ -73,8 +73,7 @@ class Tickets:
             num1 = int(msg.split()[1])
             receivedVal = int(msg.split()[-1])
             self.numOfAcks += 1
-            # time.sleep(3)
-            # majority = math.ceil((len(CLIENTS) + 2) / 2)
+            # time.sleep(1)
             if receivedVal > self.AcceptVal:
                 self.AcceptVal = receivedVal
             if self.numOfAcks == self.majorityofLive: # needs to be majority of live processes
@@ -91,17 +90,17 @@ class Tickets:
             receivedID = msg.split()[2]
             v = int(msg.split()[-1])
             self.acceptances[self.accepts] = [ballNum, receivedID, v]
-            self.accepts += 1
             # time.sleep(3)
-            print("Acceptances: ")
-            print(self.acceptances)
+            # print("Acceptances: ")
+            # print(self.acceptances)
+            self.accepts += 1
             if (self.accepts == self.majorityofLive):  # n-1
                 message = "Add to log " + str(v) # Commit to log
                 self.ticketsLeft = self.ticketsLeft - v
                 print(message)
                 self.log.append("Buy "+ str(v))
                 self.sendToAll(message)
-                self.acceptances = [[0 for x in range(4)] for y in range(10)]
+                self.acceptances = [[0 for x in range(9)] for y in range(10)]
                 self.accepts =0
 
         if "accept " in msg: #I am not a leader
@@ -111,14 +110,13 @@ class Tickets:
             senderID = msg.split()[-2]
             senderport = int(msg.split()[-1])
             ticketsAfterSale = self.ticketsLeft - val
-            # print("My BallotNum when accept message received" + str(self.BallotNum.num))
             time.sleep(1)
             if ticketsAfterSale >= 0:
                 if num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID)):
                     self.AcceptNum.num = num
                     self.AcceptNum.ID = senderID
                     self.AcceptVal = val # Accept Proposal
-                message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal) #####?????#####
+                message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal)
                 self.sendMessage(senderport, message)
             else:
                 print("Not enough tickets for your order.")
@@ -130,7 +128,7 @@ class Tickets:
             self.sendAcceptRequests(valReceived)
 
         if "heartbeat" in msg: # leader's log received and made my log
-            print(msg)
+            # print(msg)
             msg = msg.replace("heartbeat ", '')
             leader = msg.split()[0]
             self.leaderport = int(leader)
@@ -162,6 +160,7 @@ class Tickets:
 
 
     def leaderCheck(self): #Check if Leader is alive
+        # time.sleep(0.25)
         if self.leaderIsAlive == False:
             if self.electionInProgress == False:
                 self.startElection()
@@ -170,6 +169,7 @@ class Tickets:
 
     def startElection(self): # Leader down, new election begun
         m = "Election begun"
+        print(self.leaderIsAlive)
         self.electionInProgress =True
         print(m)
         self.sendToAll(m)
@@ -193,6 +193,7 @@ class Tickets:
                 print("Invalid Input")
 
             if "Buy" in message:
+                time.sleep(0.25)
                 val = int(message.split()[-1])
                 self.pending = val
 
@@ -214,9 +215,6 @@ class Tickets:
 
     def startListening(self):
         # Add my details to configdata
-        with open('live.json', 'a') as livefile:
-            json.dump({ID:configdata["kiosks"][ID]}, livefile, ensure_ascii=False)
-        # print(livefile)
         try:
             self.s.bind((self.hostname, int(self.port)))
             self.s.listen(5)
@@ -226,7 +224,7 @@ class Tickets:
                 conn = c
                 # print('Got connection from')
                 # print(addr)
-                start_new_thread(self.receiveMessages, (conn, addr))  # connection dictionary
+                start_new_thread(self.receiveMessages, (conn, addr))
         except(gaierror):
             print('There was an error making a connection')
             self.s.close()
@@ -240,25 +238,20 @@ class Tickets:
     def sendMessage(self, port, message):
         rSocket = socket(AF_INET, SOCK_STREAM)
         rSocket.connect((gethostname(), int(port)))
-        # print(message)
         rSocket.send(message.encode())
         rSocket.close()
 
     def timer(self):
-        timetosleep = 0.45 + (self.processID*0.1)
-        time.sleep(timetosleep) # Sleep for 1 + processID*0.1
+        # timetosleep = 0.45 + (self.processID*0.1)
+        timetosleep = 0.47
+        time.sleep(timetosleep) # Sleep for 0.45 + processID*0.1
 
     def startSendHeartbeat(self):
-        # self.t = threading.Timer(1.0, self.sendHeartbeat)
-        # self.t.start()
         while True:
             if self.leaderport == self.port:
                 while True:
-                    time.sleep(1)
+                    time.sleep(0.5)
                     self.sendHeartbeat()
-
-    # def stopSendHeartbeat(self):
-    #     self.t.cancel()
 
     def sendHeartbeat(self): #send entire log instead of text
         msg = "heartbeat "
@@ -267,8 +260,6 @@ class Tickets:
 
     # To send messages to everyone
     def sendToAll(self, message):
-        # portnum = 0
-        # numofLive = 0
         newliveProcesses = []
         for i in configdata["kiosks"]:
             if (configdata["kiosks"][i][1] == self.port):  ## To not send to yourself
@@ -290,10 +281,9 @@ class Tickets:
                     pass
         newliveProcesses.append(int(self.port))
         numofLive = len(newliveProcesses)
-        # numofLive +=1
         if numofLive == 1:
             sys.exit()
-        print("Number of live processes " + str(numofLive))
+        # print("Number of live processes " + str(numofLive))
         self.majorityofLive = math.ceil(numofLive/2)
 
         if numofLive > self.live or numofLive < self.live:             # or newliveProcesses!=self.liveProcesses:
@@ -301,7 +291,6 @@ class Tickets:
 
     def configChanges(self, numofLive, newliveProcesses):
         if numofLive > self.live:
-            # print("Process was added to system.")
             c= self.returnNotMatches(newliveProcesses, self.liveProcesses)
             self.liveProcesses = newliveProcesses
             self.live = numofLive
@@ -309,17 +298,12 @@ class Tickets:
             self.sendToAll("Processes " + str(self.liveProcesses))
             message = "Add to log " + str(c) + " added"
             print(message)
-            self.sendToAll(message) #Recursion issue
+            self.sendToAll(message)
             self.log.append(message.split()[-2] + " " + message.split()[-1])
 
 
         if numofLive < self.live:
-            # print("Process failed.")
             c =self.returnNotMatches(newliveProcesses, self.liveProcesses)
-            # print("New live processes ")
-            # print(newliveProcesses)
-            # print("Earlier live processes: ")
-            # print(self.liveProcesses)
             self.liveProcesses = newliveProcesses
             self.live = numofLive
             self.sendToAll("Live " + str(self.live))
