@@ -18,7 +18,7 @@ class Tickets:
         print("System running: " + ID)
         self.ID = ID #C1
         self.port = configdata["kiosks"][ID][1]
-        self.processID = int(self.port) - 4000 #1
+        self.processID = int(self.port) - 5000 #1
         self.hostname = gethostname()
         self.BallotNum = BallotNum(0,self.port)
         self.AcceptNum = BallotNum(0,0)
@@ -29,7 +29,7 @@ class Tickets:
         self.ticketsLeft = 1000
         self.majorityofLive = 2
         self.live = 3
-        self.liveProcesses = [4001, 4002, 4003]
+        self.liveProcesses = [5001, 5002, 5003]
         self.leaderport = 0
         self.leaderIsAlive = False
         self.electionInProgress = False
