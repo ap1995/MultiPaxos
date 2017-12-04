@@ -273,7 +273,7 @@ class Tickets:
                     ip, port = configdata["kiosks"][i][0], configdata["kiosks"][i][1]
                     # portnum = port
                     port = int(port)
-                    cSocket.connect((gethostname(), port))
+                    cSocket.connect((ip, port))
                     # print('Connected to port number ' + configdata["kiosks"][i][1])
                     cSocket.send(message.encode())
                     # print('Message sent to customer at port ' + str(port))
