@@ -238,7 +238,12 @@ class Tickets:
 
     def sendMessage(self, port, message):
         rSocket = socket(AF_INET, SOCK_STREAM)
-        rSocket.connect((gethostname(), int(port)))
+        iptoSend = ""
+        for i in configdata["kiosks"]:
+            ip, portfromlist = configdata["kiosks"][i][0], configdata["kiosks"][i][1]
+            if int(portfromlist) == port:
+                iptoSend = ip
+        rSocket.connect((iptoSend, int(port)))
         rSocket.send(message.encode())
         rSocket.close()
 
