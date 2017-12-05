@@ -80,52 +80,85 @@ class Tickets:
                 self.leaderport = self.port
                 msg = "Leader " + str(self.leaderport)
                 start_new_thread(self.startSendHeartbeat, ())
-                      # str(self.BallotNum.num) + " " + str(self.AcceptVal)
                 self.sendToAll(msg)
-                self.sendAcceptRequests(self.pending)
+                self.sendAcceptRequests(self.pending, "")
 
         if "accepted " in msg:
             print(msg)
             ballNum = int(msg.split()[1])
             receivedID = msg.split()[2]
-            v = int(msg.split()[-1])
+            v = int(msg.split()[3])
             self.acceptances[self.accepts] = [ballNum, receivedID, v]
+            addfail = ""
+            if " config change " in msg:
+                addfail = msg.split()[-1]
+            # print(addfail)
             # time.sleep(3)
             # print("Acceptances: ")
             # print(self.acceptances)
             self.accepts += 1
-            if (self.accepts == self.majorityofLive):  # n-1
-                message = "Add to log " + str(v) # Commit to log
-                self.ticketsLeft = self.ticketsLeft - v
-                print(message)
-                self.log.append("Buy "+ str(v))
-                self.sendToAll(message)
+            # print(self.accepts, self.majorityofLive)
+            if (self.accepts >= self.majorityofLive):
+                if "config change" in msg:
+                    m = ""
+                    if addfail == "a":
+                        m = "Add to log " + str(v) + " added"
+                        self.log.append(str(v) + " " + m.split()[-1])
+                        self.sendToAll(m)
+                    elif addfail == "f":
+                        m = "Add to log " + str(v) + " failed"
+                        self.log.append(str(v) + " " + m.split()[-1])
+                        self.sendToAll(m)
+                else:
+                    message = "Add to log " + str(v)  # Commit to log
+                    self.ticketsLeft = self.ticketsLeft - v
+                    print(message)
+                    self.log.append("Buy " + str(v))
+                    self.sendToAll(message)
                 self.acceptances = [[0 for x in range(4)] for y in range(10)]
                 self.accepts =0
 
         if "accept " in msg: #I am not a leader
             print(msg)
+            addfail = ""
+            if "config" in msg:
+                addfail = msg.split()[-1]
             num = int(msg.split()[1])
             val = int(msg.split()[2])
-            senderID = msg.split()[-2]
-            senderport = int(msg.split()[-1])
-            ticketsAfterSale = self.ticketsLeft - val
-            time.sleep(1)
-            if ticketsAfterSale >= 0:
-                if num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID)):
-                    self.AcceptNum.num = num
-                    self.AcceptNum.ID = senderID
-                    self.AcceptVal = val # Accept Proposal
-                message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal)
-                self.sendMessage(senderport, message)
+            senderID = msg.split()[5]
+            senderport = int(msg.split()[6])
+
+            # ticketsAfterSale = self.ticketsLeft
+            if val < 5000:
+                ticketsAfterSale = self.ticketsLeft - val
+                time.sleep(1)
+                if ticketsAfterSale >= 0:
+                    if num > self.BallotNum.num or (num == self.BallotNum.num and senderport > int(self.BallotNum.ID)):
+                        self.AcceptNum.num = num
+                        self.AcceptNum.ID = senderID
+                        self.AcceptVal = val # Accept Proposal
+                    message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal)
+                    self.sendMessage(senderport, message)
+                else:
+                    print("Not enough tickets for your order.")
             else:
-                print("Not enough tickets for your order.")
+                self.AcceptNum.num = num
+                self.AcceptNum.ID = senderID
+                self.AcceptVal = val  # Accept Proposal
+                message = "accepted "+ str(self.AcceptNum.num) + " "+ str(self.AcceptNum.ID) + " "+ str(self.AcceptVal)+ " config change " + addfail
+                self.sendMessage(senderport, message)
 
 
         if "Value received" in msg: #By leader
             print(msg)
-            valReceived = msg.split()[-2]
-            self.sendAcceptRequests(valReceived)
+            if "config" in msg:
+                val = msg.split()[-2]
+                addfail = msg.split()[-1]
+                self.sendAcceptRequests(val, addfail)
+            else:
+                valReceived = msg.split()[-2]
+                self.sendAcceptRequests(valReceived, "")
+
 
         if "heartbeat" in msg: # leader's log received and made my log
             # print(msg)
@@ -173,17 +206,22 @@ class Tickets:
         self.electionInProgress =True
         print(m)
         self.sendToAll(m)
-        time.sleep(3)
+        # time.sleep(3)
         self.BallotNum.num += 1
         message = "prepare " + str(self.BallotNum.num) + " " + str(self.BallotNum.ID)
+        print(message)
         self.sendToAll(message)
 
-    def sendAcceptRequests(self, val):
-        initialValue = self.AcceptVal
-        newVal = val
-        self.BallotNum.num+=1
-        message = "accept "+ str(self.BallotNum.num) + " "+ str(newVal) + " coming from "+ str(self.ID) + " " + str(self.port)
-        self.sendToAll(message)
+    def sendAcceptRequests(self, val, addfail):
+        # print("Add fail " + addfail)
+        if addfail == "":
+            self.BallotNum.num+=1
+            message = "accept "+ str(self.BallotNum.num) + " "+ str(val) + " coming from "+ str(self.ID) + " " + str(self.port)
+            self.sendToAll(message)
+        else:
+            self.BallotNum.num += 1
+            message = "accept "+ str(self.BallotNum.num) + " "+ str(val) + " coming from "+ str(self.ID) + " " + str(self.port) + " config " + addfail
+            self.sendToAll(message)
 
     def awaitInput(self):
         while True:
@@ -198,7 +236,7 @@ class Tickets:
                 self.pending = val
 
                 if (self.leaderport == self.port):
-                    self.sendAcceptRequests(val)
+                    self.sendAcceptRequests(val, "")
                 elif self.leaderIsAlive == True :
                     msg = "Value received " + str(val) + " " + str(self.port)
                     self.sendMessage(self.leaderport, msg)
@@ -244,6 +282,7 @@ class Tickets:
             if int(portfromlist) == port:
                 iptoSend = ip
         rSocket.connect((iptoSend, int(port)))
+#         rSocket.connect((gethostname(), int(port)))
         rSocket.send(message.encode())
         rSocket.close()
 
@@ -276,7 +315,6 @@ class Tickets:
                 try:
                     cSocket = socket(AF_INET, SOCK_STREAM)
                     ip, port = configdata["kiosks"][i][0], configdata["kiosks"][i][1]
-                    # portnum = port
                     port = int(port)
                     cSocket.connect((ip, port))
                     # print('Connected to port number ' + configdata["kiosks"][i][1])
@@ -302,25 +340,26 @@ class Tickets:
             c= self.returnNotMatches(newliveProcesses, self.liveProcesses)
             self.liveProcesses = newliveProcesses
             self.live = numofLive
+            self.majorityofLive = math.ceil(numofLive / 2)
             self.sendToAll("Live " + str(self.live))
             self.sendToAll("Processes " + str(self.liveProcesses))
-            message = "Add to log " + str(c) + " added"
-            print(message)
-            self.sendToAll(message)
-            self.log.append(message.split()[-2] + " " + message.split()[-1])
+            msg = "Value received config " + str(c) + " a"
+            self.sendMessage(self.leaderport, msg)
+            # message = "Add to log " + str(c) + " added"
+            # print(message)
+            # self.sendToAll(message)
+            # self.log.append(message.split()[-2] + " " + message.split()[-1])
 
 
         if numofLive < self.live:
             c =self.returnNotMatches(newliveProcesses, self.liveProcesses)
             self.liveProcesses = newliveProcesses
             self.live = numofLive
+            self.majorityofLive = math.ceil(numofLive / 2)
             self.sendToAll("Live " + str(self.live))
             self.sendToAll("Processes " + str(self.liveProcesses))
-            message = "Add to log " + str(c) + " failed"
-            print(message)
-            self.sendToAll(message)
-            self.log.append(message.split()[-2] + " " + message.split()[-1])
-
+            msg = "Value received config " + str(c) + " f"
+            self.sendMessage(self.leaderport, msg)
 
     def closeSocket(self):
         self.s.close()
