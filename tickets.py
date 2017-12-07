@@ -237,9 +237,15 @@ class Tickets:
         d = [x for x in c if x != []]
         return d[0][0]
 
-    def sendMessage(self, port, message):
+ def sendMessage(self, port, message):
         rSocket = socket(AF_INET, SOCK_STREAM)
-        rSocket.connect((gethostname(), int(port)))
+        iptoSend = ""
+        for i in configdata["kiosks"]:
+            ip, portfromlist = configdata["kiosks"][i][0], configdata["kiosks"][i][1]
+            if int(portfromlist) == port:
+                iptoSend = ip
+        rSocket.connect((iptoSend, int(port)))
+#         rSocket.connect((gethostname(), int(port)))
         rSocket.send(message.encode())
         rSocket.close()
 
@@ -274,7 +280,7 @@ class Tickets:
                     ip, port = configdata["kiosks"][i][0], configdata["kiosks"][i][1]
                     # portnum = port
                     port = int(port)
-                    cSocket.connect((gethostname(), port))
+                    cSocket.connect((ip, port))
                     # print('Connected to port number ' + configdata["kiosks"][i][1])
                     cSocket.send(message.encode())
                     # print('Message sent to customer at port ' + str(port))
