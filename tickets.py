@@ -200,6 +200,7 @@ class Tickets:
 
                 if (self.leaderport == self.port):
                     self.sendAcceptRequests(val)
+                    self.pending =0
                 elif self.leaderIsAlive == True :
                     msg = "Value received " + str(val) + " " + str(self.port)
                     self.sendMessage(self.leaderport, msg)
