@@ -237,7 +237,7 @@ class Tickets:
         d = [x for x in c if x != []]
         return d[0][0]
 
- def sendMessage(self, port, message):
+    def sendMessage(self, port, message):
         rSocket = socket(AF_INET, SOCK_STREAM)
         iptoSend = ""
         for i in configdata["kiosks"]:
